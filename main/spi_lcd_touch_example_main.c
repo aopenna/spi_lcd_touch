@@ -140,10 +140,11 @@ static void example_lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
 }
 
 #if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+#if CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_XPT2046
 uint16_t remap(uint16_t value, uint16_t  old_min, uint16_t  old_max, uint16_t  new_min, uint16_t new_max) {
     return (((value - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min;
 }
-
+#endif
 static void example_lvgl_touch_cb(lv_indev_t * indev, lv_indev_data_t * data)
 {
     uint16_t touchpad_x[1] = {0};
@@ -156,8 +157,12 @@ static void example_lvgl_touch_cb(lv_indev_t * indev, lv_indev_data_t * data)
     bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_pad, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
 
     if (touchpad_pressed && touchpad_cnt > 0) {
-        data->point.x = (lv_coord_t) remap(touchpad_x[0], 0, EXAMPLE_LCD_H_RES, 0, EXAMPLE_LCD_H_RES);//data->point.x = touchpad_x[0];
-        data->point.y = (lv_coord_t) remap(touchpad_y[0], 0, EXAMPLE_LCD_V_RES, EXAMPLE_LCD_V_RES, 0);//data->point.y = touchpad_y[0];
+        data->point.x = touchpad_x[0];//data->point.x = (lv_coord_t) remap(touchpad_x[0], 0, EXAMPLE_LCD_H_RES, 0, EXAMPLE_LCD_H_RES);//
+#if CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_XPT2046
+        data->point.y = (lv_coord_t) remap(touchpad_y[0], 0, EXAMPLE_LCD_V_RES, EXAMPLE_LCD_V_RES, 0); // remap y direction due xpt2046 component default mapping
+#else
+        data->point.y = touchpad_y[0];
+#endif        
         data->state = LV_INDEV_STATE_PRESSED;
         ESP_LOGI(TAG,"tx,ty=%d,%d",(int)touchpad_x[0],touchpad_y[0]);
         ESP_LOGI(TAG,"mx,my=%d,%d",(int)data->point.x,(int)data->point.y);
@@ -175,10 +180,11 @@ static void example_increase_lvgl_tick(void *arg)
 
 static void example_lvgl_port_task(void *arg)
 {
+
     ESP_LOGI(TAG, "Starting LVGL task");
     uint32_t time_till_next_ms = 0;
     uint32_t time_threshold_ms = 1000 / CONFIG_FREERTOS_HZ;
-    while (1) {
+    while (true) {
         _lock_acquire(&lvgl_api_lock);
         time_till_next_ms = lv_timer_handler();
         _lock_release(&lvgl_api_lock);
@@ -188,8 +194,7 @@ static void example_lvgl_port_task(void *arg)
     }
 }
 
-void app_main(void)
-{
+static lv_display_t * init_lcd_touch_lvgl() {
     ESP_LOGI(TAG, "Turn off LCD backlight");
     gpio_config_t bk_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
@@ -329,7 +334,13 @@ void app_main(void)
     lv_indev_set_user_data(indev, tp);
     lv_indev_set_read_cb(indev, example_lvgl_touch_cb);
 #endif
+    return display;
 
+}
+
+void app_main(void)
+{
+    lv_display_t *display = init_lcd_touch_lvgl();
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
 

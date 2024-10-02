@@ -8,7 +8,7 @@
   "idf.port": "/dev/ttyACM0",
   "idf.flashType": "UART",
   "idf.espIdfPath": "/home/aopenna/esp/master/esp-idf",
-  "idf.pythonBinPath": "/home/aopenna/.espressif/python_env/idf5.4_py3.11_env/bin/python",
+  "idf.pythonBinPath": "/home/aopenna/.espressif/python_env/idf5.4_py3.10_env/bin/python",
   "idf.toolsPath": "/home/aopenna/.espressif",
   "idf.customExtraPaths": "/home/aopenna/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:/home/aopenna/.espressif/tools/riscv32-esp-elf-gdb/14.2_20240403/riscv32-esp-elf-gdb/bin:/home/aopenna/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20240906/xtensa-esp-elf/bin:/home/aopenna/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20240906/riscv32-esp-elf/bin:/home/aopenna/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:/home/aopenna/.espressif/tools/cmake/3.30.2/bin:/home/aopenna/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240821/openocd-esp32/bin:/home/aopenna/.espressif/tools/ninja/1.12.1:/home/aopenna/.espressif/tools/esp-rom-elfs/20240305",
   "idf.customExtraVars": {
