@@ -1,7 +1,0 @@
-source "/home/aopenna/esp/master/esp-idf/components/bootloader/Kconfig.projbuild"
-source "/home/aopenna/esp/master/esp-idf/components/esp_app_format/Kconfig.projbuild"
-source "/home/aopenna/esp/master/esp-idf/components/esp_rom/Kconfig.projbuild"
-source "/home/aopenna/esp/master/esp-idf/components/esptool_py/Kconfig.projbuild"
-source "/home/aopenna/esp/master/esp-idf/components/partition_table/Kconfig.projbuild"
-source "/home/aopenna/Documents/Projects/lcd_testes_esp32s3/spi_lcd_touch/main/Kconfig.projbuild"
-source "/home/aopenna/Documents/Projects/lcd_testes_esp32s3/spi_lcd_touch/managed_components/atanisoft__esp_lcd_touch_xpt2046/Kconfig.projbuild"
