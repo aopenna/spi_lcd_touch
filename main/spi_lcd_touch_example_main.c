@@ -26,6 +26,11 @@
 #include "esp_lcd_gc9a01.h"
 #endif
 
+#if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+#include "esp_nvs_tc.h"
+#include "lv_tc.h"
+#include "lv_tc_screen.h"
+
 #if CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_STMPE610
 #include "esp_lcd_touch_stmpe610.h"
 #endif
@@ -34,14 +39,18 @@
 #include "esp_lcd_touch_xpt2046.h"
 #endif
 
+static esp_lcd_touch_handle_t tp = NULL;
+
+#endif //CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+
 static const char *TAG = "example";
 
 // Using SPI2 in the example
 #define LCD_HOST  SPI2_HOST
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////// Please update the following configuration according to your LCD spec //////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+/*                      Please update the following configuration according to your LCD spec                            */
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 #define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
 #define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
 #define EXAMPLE_LCD_BK_LIGHT_OFF_LEVEL !EXAMPLE_LCD_BK_LIGHT_ON_LEVEL
@@ -151,7 +160,7 @@ static void example_lvgl_touch_cb(lv_indev_t * indev, lv_indev_data_t * data)
     uint16_t touchpad_y[1] = {0};
     uint8_t touchpad_cnt = 0;
 
-    esp_lcd_touch_handle_t touch_pad = lv_indev_get_user_data(indev);
+    esp_lcd_touch_handle_t touch_pad = tp;//lv_indev_get_user_data(indev);
     esp_lcd_touch_read_data(touch_pad);
     /* Get coordinates */
     bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_pad, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
@@ -192,6 +201,15 @@ static void example_lvgl_port_task(void *arg)
         time_till_next_ms = MAX(time_till_next_ms, time_threshold_ms);
         usleep(1000 * time_till_next_ms);
     }
+}
+
+void tc_finish_cb(
+        lv_event_t *event
+    ) {
+    /*
+        Load the application
+    */
+    //your_start_application(); /* Implement this */
 }
 
 static lv_display_t * init_lcd_touch_lvgl() {
@@ -316,7 +334,7 @@ static lv_display_t * init_lcd_touch_lvgl() {
             .mirror_y = 0,
         },
     };
-    esp_lcd_touch_handle_t tp = NULL;
+    //esp_lcd_touch_handle_t tp = NULL;
 
 #if CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_STMPE610
     ESP_LOGI(TAG, "Initialize touch controller STMPE610");
@@ -331,8 +349,15 @@ static lv_display_t * init_lcd_touch_lvgl() {
     indev = lv_indev_create();  // Input device driver (Touch)
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_display(indev, display);
-    lv_indev_set_user_data(indev, tp);
+    //lv_indev_set_user_data(indev, tp);
     lv_indev_set_read_cb(indev, example_lvgl_touch_cb);
+
+    // start of touch calibration calls
+    lv_tc_indev_init(indev);
+    lv_tc_register_coeff_save_cb(esp_nvs_tc_coeff_save_cb);
+    ESP_LOGI(TAG, "Create LVGL task");
+    xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
+
 #endif
     return display;
 
@@ -340,13 +365,31 @@ static lv_display_t * init_lcd_touch_lvgl() {
 
 void app_main(void)
 {
-    lv_display_t *display = init_lcd_touch_lvgl();
-    ESP_LOGI(TAG, "Create LVGL task");
-    xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
+    lv_display_t * display = init_lcd_touch_lvgl();
+
+    lv_obj_t *tCScreen = lv_tc_screen_create();
+    lv_obj_add_event_cb(tCScreen, tc_finish_cb, LV_EVENT_READY, NULL);
 
     ESP_LOGI(TAG, "Display LVGL Meter Widget");
+
+    // if(esp_nvs_tc_coeff_init()) {
+    //     /*
+    //         Data exists: proceed with the normal application without
+    //         showing the calibration screen
+    //     */
+        _lock_acquire(&lvgl_api_lock);
+        example_lvgl_demo_ui(display);
+        _lock_release(&lvgl_api_lock);
+    // } else {
+    //     /*
+    //         There is no data: load the calibration screen, perform the calibration
+    //     */
+    //     _lock_acquire(&lvgl_api_lock);
+    //     lv_disp_load_scr(tCScreen);
+    //     lv_tc_screen_start(tCScreen);
+    //     _lock_release(&lvgl_api_lock);
+    // }
+
     // Lock the mutex due to the LVGL APIs are not thread-safe
-    _lock_acquire(&lvgl_api_lock);
-    example_lvgl_demo_ui(display);
-    _lock_release(&lvgl_api_lock);
+
 }

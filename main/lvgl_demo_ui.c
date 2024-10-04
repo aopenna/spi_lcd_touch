@@ -31,7 +31,9 @@ static void set_angle(void * obj, int32_t v)
 
 void example_lvgl_demo_ui(lv_display_t *disp)
 {
-    lv_obj_t *scr = lv_display_get_screen_active(disp);
+    lv_obj_t * screen = lv_obj_create(NULL);
+    lv_screen_load(screen);
+    lv_obj_t *scr = screen;//lv_display_get_screen_active(disp);
 
     btn = lv_button_create(scr);
     lv_obj_t * lbl = lv_label_create(btn);
