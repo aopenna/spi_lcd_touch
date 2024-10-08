@@ -11,7 +11,9 @@ extern "C" {
 #include "stdbool.h"
 
 #include "lvgl.h"
-//#include "lvgl_private.h"
+#if LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 2 
+#include "lvgl_private.h" // include needed due breaking changes describe on release notes of LVGL 9.2.0
+#endif
 
 
 /**********************
@@ -24,7 +26,7 @@ typedef enum {
 } lv_tc_start_delay_t;
 
 typedef struct {
-    lv_obj_t *screenObj;             /* The screen object */
+    lv_obj_t screenObj;             /* The screen object */
     lv_obj_t *indicatorObj;         /* The crosshair image object */
     lv_obj_t *msgLabelObj;          /* The message label object */
     lv_obj_t *recalibrateBtnObj;    /* The recalibration button object */

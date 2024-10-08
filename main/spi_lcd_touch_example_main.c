@@ -94,8 +94,17 @@ static const char *TAG = "example";
 
 // LVGL library is not thread-safe, this example will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
+static lv_display_t *display;
 
 extern void example_lvgl_demo_ui(lv_disp_t *disp);
+extern void create_screen_1();
+extern void create_screen_2();
+
+void load_application(lv_disp_t *disp){
+    _lock_acquire(&lvgl_api_lock);
+    example_lvgl_demo_ui(disp);
+    _lock_release(&lvgl_api_lock);   
+}
 
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
@@ -173,8 +182,8 @@ static void example_lvgl_touch_cb(lv_indev_t * indev, lv_indev_data_t * data)
         data->point.y = touchpad_y[0];
 #endif        
         data->state = LV_INDEV_STATE_PRESSED;
-        ESP_LOGI(TAG,"tx,ty=%d,%d",(int)touchpad_x[0],touchpad_y[0]);
-        ESP_LOGI(TAG,"mx,my=%d,%d",(int)data->point.x,(int)data->point.y);
+        ESP_LOGD(TAG,"tx,ty=%d,%d",(int)touchpad_x[0],touchpad_y[0]);
+        ESP_LOGD(TAG,"mx,my=%d,%d",(int)data->point.x,(int)data->point.y);
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
     }
@@ -206,10 +215,12 @@ static void example_lvgl_port_task(void *arg)
 void tc_finish_cb(
         lv_event_t *event
     ) {
+    ESP_LOGI(TAG,"loading application");
     /*
         Load the application
     */
     //your_start_application(); /* Implement this */
+    esp_restart();
 }
 
 static lv_display_t * init_lcd_touch_lvgl() {
@@ -359,36 +370,41 @@ static lv_display_t * init_lcd_touch_lvgl() {
     xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
 
 #endif
+    lv_disp_set_default(display);
     return display;
 
 }
 
 void app_main(void)
 {
-    lv_display_t * display = init_lcd_touch_lvgl();
+    display = init_lcd_touch_lvgl();
 
     lv_obj_t *tCScreen = lv_tc_screen_create();
+
     lv_obj_add_event_cb(tCScreen, tc_finish_cb, LV_EVENT_READY, NULL);
 
     ESP_LOGI(TAG, "Display LVGL Meter Widget");
 
-    // if(esp_nvs_tc_coeff_init()) {
-    //     /*
-    //         Data exists: proceed with the normal application without
-    //         showing the calibration screen
-    //     */
+    if(esp_nvs_tc_coeff_init()) {
+        /*
+            Data exists: proceed with the normal application without
+            showing the calibration screen
+        */
+       load_application(display);
+        // _lock_acquire(&lvgl_api_lock);
+        // example_lvgl_demo_ui(display);
+        // //create_screen_1();
+        // _lock_release(&lvgl_api_lock);
+    } else {
+    
+        /*
+            There is no data: load the calibration screen, perform the calibration
+        */
         _lock_acquire(&lvgl_api_lock);
-        example_lvgl_demo_ui(display);
+        lv_screen_load(tCScreen);
+        lv_tc_screen_start(tCScreen);
         _lock_release(&lvgl_api_lock);
-    // } else {
-    //     /*
-    //         There is no data: load the calibration screen, perform the calibration
-    //     */
-    //     _lock_acquire(&lvgl_api_lock);
-    //     lv_disp_load_scr(tCScreen);
-    //     lv_tc_screen_start(tCScreen);
-    //     _lock_release(&lvgl_api_lock);
-    // }
+    }
 
     // Lock the mutex due to the LVGL APIs are not thread-safe
 
